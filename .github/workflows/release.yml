@@ -1,13 +1,42 @@
-name: "Publish release"
+
+name: GlobalTrend News Automation
 
 on:
-  push:
-    tags:
-      - "*"
+  workflow_dispatch:
+  schedule:
+    - cron: "0 */4 * * *"
 
 jobs:
-  publish-release:
+  publish-news:
+    runs-on: ubuntu-latest
+
     permissions:
-      contents: "write"
-    name: "Publish release"
-    uses: "glpi-project/plugin-release-workflows/.github/workflows/publish-release.yml@v1"
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run news automation
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          META_PAGE_ID: ${{ secrets.META_PAGE_ID }}
+          META_PAGE_ACCESS_TOKEN: ${{ secrets.META_PAGE_ACCESS_TOKEN }}
+        run: python main.py
+
+      - name: Save posted news state
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add last_posted.txt
+          git diff --cached --quiet || git commit -m "Update posted news state"
+          git push
+          
